@@ -63,9 +63,15 @@ const HomeScreen = ()=>{
     const [keyWord, setKeyWord] = useState('')
     const [loaderStatus, setLoaderStatus] = useState(false)
     const [galleryImages, setGalleryImages] = useState([])
+    
 
     const [visible, setVisible] = useState(false);
     const [visible2, setVisible2] = useState(false);
+    const [visible3, setVisible3] = useState(false);
+
+    const toggleOverlay3 = ()=>{
+      setVisible3(!visible3);
+    }
 
     const toggleOverlay2 = (s)=>{
       if(s!=undefined && s!=null){
@@ -77,25 +83,27 @@ const HomeScreen = ()=>{
     }
 
     const toggleOverlay = async() => {
-      if(visible){
-        let res=await postData("deleteimage",{count:finalCount,filename:finalImages})
-        console.log(res)
-        setPhoto(null);
-        setEventType("")
-        setKeyWord("")
+      if(visible && !visible3){
+       
+        setFinalImages('')
         setFinalCount(0)
-        setFinalImages([])
-        toggleOverlay2()
       }
+      
       setVisible(!visible);
+      let res=await postData("deleteimage",{count:finalCount,filename:finalImages})
+      console.log(res)
+      setPhoto(null);
+      setEventType("")
+      setKeyWord("")
+      
+      
     };
+
+    
     
     const handleChoosePhoto = () => {
     
         var err = false ;
-        
-        
-
         if(!err ){
         launchImageLibrary({ noData: true }, (response) => {
           if (response && response.assets != undefined) {
@@ -132,16 +140,17 @@ const HomeScreen = ()=>{
         data.append('keyword',keyWord)
         console.log(data)
        
-        toggleOverlay2()
+        toggleOverlay2(true)
         var config = { headers:{'content-type':'multipart/form-data'}}
         var result = await postDataAndImage('setbackground',data,config);
+        toggleOverlay2(false)
         console.log(JSON.stringify(result))
         if(result.status){
           setFinalImages(result.filename)
           setFinalCount(result.count)
-          toggleOverlay()
+          setVisible(true)
         }
-        toggleOverlay2()
+        
       }else
       {
         alert("Enter All Fields")
@@ -160,8 +169,9 @@ const HomeScreen = ()=>{
      
         return(
           image.map((item,index)=>{
+            console.log("hi",`${ServerURL}/images/${finalImages}${item}.png`,"hi")
           return(    
-          <View key={item} style={{display:'flex', flex:1,justifyContent:'center', alignItems:'center'}}>
+          <View key={index+100} style={{display:'flex', flex:1,justifyContent:'center', alignItems:'center'}}>
             
             <Image source={{uri:`${ServerURL}/images/${finalImages}${item}.png`}} style={{width:300,height:300, resizeMode:'contain'}} />
             <View style={{display:'flex', flexDirection:'row',padding:10}}>
@@ -175,10 +185,27 @@ const HomeScreen = ()=>{
         }))
       }
 
+      const showGallery=()=>{
+        return galleryImages.map((item,index)=>{
+          
+         return ( <View key={index} style={{display:'flex', flex:1,justifyContent:'center', alignItems:'center',marginTop:5}}>
+            
+         <Image source={{uri:`${ServerURL}/images/${item.image}`}} style={{width:300,height:300, resizeMode:'contain'}} />
+         
+         </View>
+         )
+        })
+      }
+
       const gallery=async()=>{
+        console.log("Request Called")
+        toggleOverlay2(true)
         var result = await getData('getgallery');
-        
-        if(result.status){
+        toggleOverlay2(false)
+        console.log(JSON.stringify(result))
+        console.log("Rsult Ans", (result.status && result.result.length>0))
+        if(result.status && result.result.length>0){
+          toggleOverlay3()
             setGalleryImages(result.result)
         }else
         {
@@ -227,7 +254,7 @@ const HomeScreen = ()=>{
                 backgroundColor: '#3D6DCC',
                 justifyContent: 'space-around',
               }}
-            leftComponent={<TouchableOpacity><MI name="photo-library" size={35} style={{color:'#fff',marginTop:10}}/></TouchableOpacity>}
+            leftComponent={<TouchableOpacity onPress={()=>gallery()} ><MI name="photo-library" size={35} style={{color:'#fff',marginTop:10}}/></TouchableOpacity>}
             />
             <View style={{display:'flex', alignItems:'center',marginTop:20}}>
            <Image  source={require('./logo1.png')} style={{width:100,height:100, resizeMode:'contain'}} />
@@ -278,12 +305,25 @@ const HomeScreen = ()=>{
     <View style={{margin:10}}>
       {/* <Button title="Open Overlay" onPress={toggleOverlay} /> */}
 
-      <Overlay   isVisible={visible} onBackdropPress={toggleOverlay}>
+      <Overlay   isVisible={visible} onBackdropPress={()=>toggleOverlay()}>
      <ScrollView>
      <View  style={{margin:10,width:"100%"}}>
             <Button onPress={()=>toggleOverlay()} title={"Close Gallery"}>Close Gallery</Button>
             </View>
       {showUpdatedImages()}
+      </ScrollView>
+      </Overlay>
+    </View>
+
+    <View style={{margin:10}}>
+      {/* <Button title="Open Overlay" onPress={toggleOverlay} /> */}
+
+      <Overlay   isVisible={visible3} onBackdropPress={toggleOverlay3}>
+     <ScrollView>
+     <View  style={{margin:10,width:"100%"}}>
+            <Button onPress={()=>toggleOverlay3()} title={"Close Gallery"}>Close Gallery</Button>
+            </View>
+      {showGallery()}
       </ScrollView>
       </Overlay>
     </View>
