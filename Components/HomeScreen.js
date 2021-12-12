@@ -1,65 +1,72 @@
 import React, { useState,useEffect } from 'react'
-import { View, Text,Image,PermissionsAndroid, ScrollView,Dimensions, Linking } from 'react-native';
+import { View, Text,Image, ScrollView,Dimensions, Linking,ActivityIndicator } from 'react-native';
 import { Header } from 'react-native-elements/dist/header/Header';
 import { Input } from 'react-native-elements';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { Button } from 'react-native-elements';
 import { postData, postDataAndImage,ServerURL } from './FetchAllServices';
 import { Overlay } from 'react-native-elements';
-import {RNFetchBlob} from "rn-fetch-blob"
+
+// import {RNFetchBlob} from "rn-fetch-blob"
 // const { config, fs } = RNFetchBlob;
 //   const { DownloadDir } = fs.dirs;
 
-const requestDownloadPermission = async () => {
-  try {
-    const granted = await PermissionsAndroid.request(
-      PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-      {
-        title: "Cool IIIT Bhopal Background Image Download Permission",
-        message:"give permmision form download image generate by app",
-        buttonNeutral: "Ask Me Later",
-        buttonNegative: "Cancel",
-        buttonPositive: "OK"
-      }
-    );
-    if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-      console.log("You can use the memory");
-    } else {
-      console.log("memory permission denied");
-    }
-  } catch (err) {
-    console.warn(err);
-  }
-};
+// const requestDownloadPermission = async () => {
+//   try {
+//     const granted = await PermissionsAndroid.request(
+//       PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+//       {
+//         title: "Cool IIIT Bhopal Background Image Download Permission",
+//         message:"give permmision form download image generate by app",
+//         buttonNeutral: "Ask Me Later",
+//         buttonNegative: "Cancel",
+//         buttonPositive: "OK"
+//       }
+//     );
+//     if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+//       console.log("You can use the memory");
+//     } else {
+//       console.log("memory permission denied");
+//     }
+//   } catch (err) {
+//     console.warn(err);
+//   }
+// };
 
-const downloadImage=(filename)=>{
-  const DownloadDir=RNFetchBlob.fs.dirs.DownloadDir
-  const options = {
-    fileCache: true,
-    addAndroidDownloads: {
-      useDownloadManager: true, // true will use native manager and be shown on notification bar.
-      notification: true,
-      path: `${DownloadDir}/${filename}`,
-      description: 'Downloading.',
-    },
-  };
+// const downloadImage=(filename)=>{
+//   const DownloadDir=RNFetchBlob.fs.dirs.DownloadDir
+//   const options = {
+//     fileCache: true,
+//     addAndroidDownloads: {
+//       useDownloadManager: true, // true will use native manager and be shown on notification bar.
+//       notification: true,
+//       path: `${DownloadDir}/${filename}`,
+//       description: 'Downloading.',
+//     },
+//   };
 
-  RNFetchBlob.config(options).fetch('GET', `${ServerURL}/images/${filename}`).then((res) => {
-    console.log('do some magic in here');
-  });
-}
+//   RNFetchBlob.config(options).fetch('GET', `${ServerURL}/images/${filename}`).then((res) => {
+//     console.log('do some magic in here');
+//   });
+// }
 
 const HomeScreen = ()=>{
     useEffect(()=>{
-      requestDownloadPermission()
+      // requestDownloadPermission()
     },[])
     const [photo, setPhoto] = React.useState(null);
     const [finalImages, setFinalImages] = useState('')
     const [finalCount, setFinalCount] = useState(0)
     const [eventType, setEventType] = useState('')
     const [keyWord, setKeyWord] = useState('')
+    const [loaderStatus, setLoaderStatus] = useState(false)
 
     const [visible, setVisible] = useState(false);
+    const [visible2, setVisible2] = useState(false);
+
+    const toggleOverlay2 = ()=>{
+      setVisible2(!visible2)
+    }
 
     const toggleOverlay = async() => {
       if(visible){
@@ -70,6 +77,7 @@ const HomeScreen = ()=>{
         setKeyWord("")
         setFinalCount(0)
         setFinalImages([])
+        toggleOverlay2()
       }
       setVisible(!visible);
     };
@@ -86,7 +94,7 @@ const HomeScreen = ()=>{
         if(!err ){
         launchImageLibrary({ noData: true }, (response) => {
           if (response && response.assets != undefined) {
-            if(response.assets[0].type=='image/jpeg'){
+            if(response.assets[0].type=='image/jpeg' || response.assets[0].type=='image/png'){
               console.log(response)
               setPhoto(response);
             }else
@@ -112,6 +120,7 @@ const HomeScreen = ()=>{
         data.append('eventType',eventType)
         data.append('keyword',keyWord)
         console.log(data)
+        toggleOverlay2()
         var config = { headers:{'content-type':'multipart/form-data'}}
         var result = await postDataAndImage('setbackground',data,config);
         console.log(JSON.stringify(result))
@@ -120,6 +129,7 @@ const HomeScreen = ()=>{
           setFinalCount(result.count)
           toggleOverlay()
         }
+        toggleOverlay2()
       }
 
       const showUpdatedImages=()=>{
@@ -159,6 +169,7 @@ const HomeScreen = ()=>{
                 backgroundColor: '#3D6DCC',
                 justifyContent: 'space-around',
               }}
+            
             />
             <View style={{display:'flex', alignItems:'center',marginTop:20}}>
            <Image  source={require('./logo1.png')} style={{width:100,height:100, resizeMode:'contain'}} />
@@ -177,7 +188,7 @@ const HomeScreen = ()=>{
             />
           <View style={{ display:'flex', alignItems: 'center',justifyContent:'center' }}>
                 {photo? (
-                  <View>
+                  <View style={{height:Dimensions.get('window').height}}>
                     <Image
                       source={{ uri: photo.assets[0].uri }}
                       style={{ width: 300, height: 300 }}
@@ -191,10 +202,13 @@ const HomeScreen = ()=>{
                     </View>
                     </View>
                   </ View>
-      ):<Button title="Choose Photo" onPress={()=>handleChoosePhoto()} />}
+      ):   <Button title="Choose Photo" onPress={()=>handleChoosePhoto()} />
+      }
       
     </View>
     
+    
+
     <View style={{margin:10}}>
       {/* <Button title="Open Overlay" onPress={toggleOverlay} /> */}
 
@@ -208,7 +222,12 @@ const HomeScreen = ()=>{
       </Overlay>
     </View>
 
+    <Overlay isVisible={visible2} >
+    <ActivityIndicator style={{zIndex:20}} size="large" color="#0000ff" />
+    <Text>Generating Background....</Text>
+    </Overlay>
 
+   
            </View>
         </View>
         </ScrollView>
