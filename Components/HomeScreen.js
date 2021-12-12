@@ -1,11 +1,13 @@
 import React, { useState,useEffect } from 'react'
-import { View, Text,Image, ScrollView,Dimensions, Linking,ActivityIndicator } from 'react-native';
+import { View, Text,Image, ScrollView,Dimensions, Linking,ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Header } from 'react-native-elements/dist/header/Header';
 import { Input } from 'react-native-elements';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { Button } from 'react-native-elements';
-import { postData, postDataAndImage,ServerURL } from './FetchAllServices';
+import { getData, postData, postDataAndImage,ServerURL } from './FetchAllServices';
 import { Overlay } from 'react-native-elements';
+import MI from 'react-native-vector-icons/MaterialIcons';
+import Icon from 'react-native-vector-icons/FontAwesome';
 
 // import {RNFetchBlob} from "rn-fetch-blob"
 // const { config, fs } = RNFetchBlob;
@@ -60,12 +62,18 @@ const HomeScreen = ()=>{
     const [eventType, setEventType] = useState('')
     const [keyWord, setKeyWord] = useState('')
     const [loaderStatus, setLoaderStatus] = useState(false)
+    const [galleryImages, setGalleryImages] = useState([])
 
     const [visible, setVisible] = useState(false);
     const [visible2, setVisible2] = useState(false);
 
-    const toggleOverlay2 = ()=>{
-      setVisible2(!visible2)
+    const toggleOverlay2 = (s)=>{
+      if(s!=undefined && s!=null){
+        setVisible2(s)
+      }else{
+        setVisible2(!visible2)
+      }
+      
     }
 
     const toggleOverlay = async() => {
@@ -85,10 +93,7 @@ const HomeScreen = ()=>{
     const handleChoosePhoto = () => {
     
         var err = false ;
-        if(eventType==''){
-          err=true;
-        }
-        if(keyWord==''){err=true}
+        
         
 
         if(!err ){
@@ -103,12 +108,18 @@ const HomeScreen = ()=>{
             }
           }
         });
-      }else{
-        alert("Enter All Fields")
       }
       };
 
       const uploadPhoto = async() =>{
+        var err = false ;
+        if(eventType==''){
+          err=true;
+        }
+        if(keyWord==''){err=true}
+        
+        if(photo==null){err=true}
+        if(!err){
         var data = new FormData();
         
     data.append('picture', {
@@ -120,6 +131,7 @@ const HomeScreen = ()=>{
         data.append('eventType',eventType)
         data.append('keyword',keyWord)
         console.log(data)
+       
         toggleOverlay2()
         var config = { headers:{'content-type':'multipart/form-data'}}
         var result = await postDataAndImage('setbackground',data,config);
@@ -130,7 +142,11 @@ const HomeScreen = ()=>{
           toggleOverlay()
         }
         toggleOverlay2()
+      }else
+      {
+        alert("Enter All Fields")
       }
+    }
 
       const showUpdatedImages=()=>{
        
@@ -158,7 +174,49 @@ const HomeScreen = ()=>{
           )
         }))
       }
+
+      const gallery=async()=>{
+        var result = await getData('getgallery');
+        
+        if(result.status){
+            setGalleryImages(result.result)
+        }else
+        {
+          alert("No images");
+        }
+      }
+      
+      const addtogalery=async()=>{
+        var data = new FormData();
+        data.append('picture', {
+          name: photo.assets[0].fileName,
+          type: photo.assets[0].type,
+          uri: Platform.OS === 'ios' ? photo.assets[0].uri.replace('file://', '') : photo.assets[0].uri,
+        });
+        console.log('Request called')
+       
+        toggleOverlay2(true)
+        var config = { headers:{'content-type':'multipart/form-data'}}
+        var result = await postDataAndImage('uploadimage',data,config);
+      
+        
+        toggleOverlay2(false);
+        if(result.status){
+          alert("Image Uploaded Successfully")
+          setPhoto(null)
+          setEventType('')
+          setKeyWord('')
+
+        }else{
+          
+          alert('Image not uploaded')
+          
+        }
+        
+      }
+      
       const [screenHeight,setScreenHieght] =useState( Dimensions.get('window').height)
+
     return (
      
         <ScrollView style={{minHeight:screenHeight+40,maxHeight:"60%"}} >
@@ -169,7 +227,7 @@ const HomeScreen = ()=>{
                 backgroundColor: '#3D6DCC',
                 justifyContent: 'space-around',
               }}
-            
+            leftComponent={<TouchableOpacity><MI name="photo-library" size={35} style={{color:'#fff',marginTop:10}}/></TouchableOpacity>}
             />
             <View style={{display:'flex', alignItems:'center',marginTop:20}}>
            <Image  source={require('./logo1.png')} style={{width:100,height:100, resizeMode:'contain'}} />
@@ -187,22 +245,30 @@ const HomeScreen = ()=>{
                         onChangeText={(text)=>{setKeyWord(text)}}
             />
           <View style={{ display:'flex', alignItems: 'center',justifyContent:'center' }}>
-                {photo? (
-                  <View style={{height:Dimensions.get('window').height}}>
+                {photo? 
+                  <View style={{height:1000,display:'flex',alignItems:'center'}}>
                     <Image
                       source={{ uri: photo.assets[0].uri }}
                       style={{ width: 300, height: 300 }}
                     />
                     <View style={{display:'flex', flexDirection:'row',padding:10}}>
-                        <View style={{margin:10}}>
+                        <View style={{margin:10, marginRight:2}}>
                     <Button  title="Generate Background" onPress={()=>uploadPhoto()} />
+                    </View>
+                    
+                    <View style={{margin:10, marginRight:2}}>
+                    <Button  title="Add to galary" onPress={()=>addtogalery()} />
                     </View>
                     <View style={{margin:10}}>
                     <Button  title="Cancel" onPress={()=>setPhoto(null)} />
                     </View>
                     </View>
                   </ View>
-      ):   <Button title="Choose Photo" onPress={()=>handleChoosePhoto()} />
+      :   <Button  icon={{
+        name: "photo-camera",
+        size: 25,
+        color: "white"
+      }} touchSoundDisabled={true} title="Choose Photo" onPress={()=>handleChoosePhoto()} />
       }
       
     </View>
@@ -224,7 +290,6 @@ const HomeScreen = ()=>{
 
     <Overlay isVisible={visible2} >
     <ActivityIndicator style={{zIndex:20}} size="large" color="#0000ff" />
-    <Text>Generating Background....</Text>
     </Overlay>
 
    
